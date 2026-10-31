@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NCR Traders - Tax Invoice</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NCR Traders">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome / Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- html2pdf.js for direct client-side PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-16 lg:pb-0">
+
+  <!-- Top Navbar -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap justify-between items-center gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-bold text-lg shadow">
+          <i class="fa-solid fa-truck-moving"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold leading-tight flex items-center gap-2">
+            NCR Traders
+            <span class="text-[10px] sm:text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-mono">Tax Invoice</span>
+          </h1>
+          <p class="text-[11px] text-slate-400">Quarry Aggregates, M-Sand, Building Materials & Transport</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btnNewInvoice" class="px-2.5 py-1.5 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md transition flex items-center gap-1 text-slate-200">
+          <i class="fa-solid fa-file-circle-plus"></i> <span class="hidden sm:inline">New Bill</span><span class="sm:hidden">New</span>
+        </button>
+        <button id="btnHistory" class="px-2.5 py-1.5 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md transition flex items-center gap-1 text-slate-200">
+          <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden sm:inline">History</span> (<span id="historyCount">0</span>)
+        </button>
+        <button id="btnPrintInvoice" class="px-2.5 py-1.5 text-xs sm:text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-md shadow transition flex items-center gap-1">
+          <i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Print</span>
+        </button>
+        <button id="btnExportPDF" class="px-3 py-1.5 text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-md shadow transition flex items-center gap-1">
+          <i class="fa-solid fa-file-pdf"></i> <span class="hidden sm:inline">PDF</span><span class="sm:hidden">PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile View Toggle Switcher (Edit vs Preview) -->
+  <div class="lg:hidden bg-slate-800 text-white px-3 py-2 border-b border-slate-700 sticky top-[53px] z-20">
+    <div class="flex rounded-lg bg-slate-900 p-1 border border-slate-700">
+      <button id="btnTabEdit" type="button" class="flex-1 py-1.5 text-xs font-semibold rounded-md bg-amber-500 text-slate-950 transition flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-pen-to-square"></i> Edit Details
+      </button>
+      <button id="btnTabPreview" type="button" class="flex-1 py-1.5 text-xs font-semibold rounded-md text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-eye"></i> View Invoice Slip
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto p-3 sm:p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: Invoice Editor Form (7 cols) -->
+    <div id="formSection" class="lg:col-span-6 xl:col-span-7 space-y-4 sm:space-y-6">
+
+      <!-- Form Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-800 px-4 sm:px-5 py-3 border-b border-slate-700 flex justify-between items-center text-white">
+          <span class="font-semibold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-pen-to-square text-amber-400"></i> Invoice Details Form
+          </span>
+          <span class="text-xs text-slate-400">Changes reflect instantly in preview</span>
+        </div>
+
+        <form id="invoiceForm" class="p-3.5 sm:p-5 space-y-4 sm:space-y-5">
+
+          <!-- Main Profile Details Section (Collapsible/Accordion) -->
+          <div class="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+            <div class="px-3.5 sm:px-4 py-2.5 bg-slate-100 flex justify-between items-center cursor-pointer select-none" id="toggleTrader">
+              <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-building text-slate-500"></i> Main Profile (Header)
+              </span>
+              <span class="text-xs text-blue-600 font-medium flex items-center gap-1">
+                Edit Profile <i class="fa-solid fa-chevron-down text-[10px]"></i>
+              </span>
+            </div>
+            <div id="traderFields" class="p-3.5 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Company / Profile Name</label>
+                <input type="text" id="sellerName" value="NCR Traders" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-1 focus:ring-amber-500">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Address & Location</label>
+                <input type="text" id="sellerAddress" value="2/92-2, Kurangani, Thoothukudi, Tamil Nadu, 628623" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-1 focus:ring-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Main Profile Phone Number</label>
+                <input type="tel" id="sellerPhone" value="9489522652" placeholder="e.g. 9489522652" class="w-full px-3 py-1.5 text-sm font-mono border rounded focus:ring-1 focus:ring-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">GSTIN Number</label>
+                <input type="text" id="sellerGstin" value="33ENIPR3307E1Z6" class="w-full px-3 py-1.5 text-sm font-mono uppercase border rounded focus:ring-1 focus:ring-amber-500">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Document Title</label>
+                <select id="docTitle" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-1 focus:ring-amber-500">
+                  <option value="Tax Invoice" selected>Tax Invoice</option>
+                  <option value="Delivery Note">Delivery Note</option>
+                  <option value="Cash Bill">Cash Bill</option>
+                  <option value="Weighment Slip & Delivery Note">Weighment Slip & Delivery Note</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bill & Vehicle Metadata -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Bill Number (YYMM+Incremental)</label>
+              <input type="text" id="billNo" value="261001" class="w-full px-3 py-1.5 text-sm font-mono border rounded focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Bill Date & Time</label>
+              <input type="datetime-local" id="billDateTime" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Payment Mode</label>
+              <select id="billType" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+                <option value="Cash" selected>Cash</option>
+                <option value="Credit">Credit</option>
+                <option value="UPI / Online">UPI / Online</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- SEPARATED 1: Customer Information Section (Empty Defaults) -->
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-user-tag text-blue-600"></i> Customer Information
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Customer / Bill To Name</label>
+                <input type="text" id="billTo" value="" placeholder="Customer or Company Name" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Customer Phone Number</label>
+                <input type="tel" id="buyerPhone" value="" placeholder="e.g. 9876543210" class="w-full px-3 py-1.5 text-sm font-mono border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Customer Address</label>
+                <input type="text" id="buyerAddress" value="" placeholder="Door No, Street, Town, District, Pincode" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Customer GSTIN (Optional)</label>
+                <input type="text" id="buyerGstin" placeholder="33..." class="w-full px-3 py-1.5 text-sm font-mono uppercase border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- SEPARATED 2: Dispatch & Transport Info Section (Empty Defaults) -->
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-truck-moving text-amber-600"></i> Dispatch & Transport Details
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Delivery Destination / Site</label>
+                <input type="text" id="deliveryTo" value="" placeholder="Town / Project Site" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Vehicle Number</label>
+                <input type="text" id="vehicleNumber" value="" placeholder="e.g. TN92J0160" class="w-full px-3 py-1.5 text-sm font-mono uppercase border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Driver Phone / Contact</label>
+                <input type="tel" id="driverPhone" value="" placeholder="e.g. 9489522652" class="w-full px-3 py-1.5 text-sm font-mono border rounded focus:ring-2 focus:ring-amber-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Section -->
+          <div class="space-y-3">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                <i class="fa-solid fa-cubes text-slate-600"></i> Materials & Services
+              </h3>
+              <!-- Quick Presets -->
+              <div class="relative inline-block text-left">
+                <select id="quickPreset" class="text-xs bg-amber-50 text-amber-800 border border-amber-300 rounded px-2.5 py-1.5 font-medium max-w-[260px] truncate">
+                  <option value="">+ Quick Presets (Blue Metal, Sand, Cement...)</option>
+                  <optgroup label="Blue Metal & Aggregates">
+                    <option value="20MM BLUE METAL AGGREGATE|251710|620|Ton">20mm Blue Metal (HSN 251710 - ₹620/Ton)</option>
+                    <option value="40MM BLUE METAL AGGREGATE|251710|580|Ton">40mm Blue Metal (HSN 251710 - ₹580/Ton)</option>
+                    <option value="12MM BLUE METAL AGGREGATE|251710|640|Ton">12mm Blue Metal (HSN 251710 - ₹640/Ton)</option>
+                    <option value="6MM BLUE METAL / CHIPS|251710|660|Ton">6mm Chips / Baby Metal (HSN 251710 - ₹660/Ton)</option>
+                    <option value="QUARRY DUST / BLUE DUST|251710|450|Ton">Quarry Dust / Blue Dust (HSN 251710 - ₹450/Ton)</option>
+                    <option value="GSB / WMM ROAD BASE MATERIAL|251710|480|Ton">GSB / WMM Road Base (HSN 251710 - ₹480/Ton)</option>
+                    <option value="BOULDER / RUBBLE STONE|251710|400|Ton">Quarry Boulder / Rubble (HSN 251710 - ₹400/Ton)</option>
+                  </optgroup>
+                  <optgroup label="Sand & M-Sand">
+                    <option value="MANUFACTURED M-SAND (ROUGH / CONCRETE)|251710|700|Ton">M-Sand Rough / Concrete (HSN 251710 - ₹700/Ton)</option>
+                    <option value="PLASTERING P-SAND (WASHED)|251710|850|Ton">P-Sand Plastering Washed (HSN 251710 - ₹850/Ton)</option>
+                    <option value="RIVER SAND (FILTERED)|250510|1600|Ton">Filtered River Sand (HSN 250510 - ₹1600/Ton)</option>
+                  </optgroup>
+                  <optgroup label="Cement Products">
+                    <option value="OPC 53 GRADE CEMENT BAG|252329|410|Bags">OPC 53 Grade Cement (HSN 252329 - ₹410/Bag)</option>
+                    <option value="PPC CEMENT BAG (50 KG)|252329|380|Bags">PPC Cement Bag 50kg (HSN 252329 - ₹380/Bag)</option>
+                    <option value="WHITE CEMENT (50 KG)|252321|950|Bags">White Cement 50kg (HSN 252321 - ₹950/Bag)</option>
+                  </optgroup>
+                  <optgroup label="Transport & Logistics">
+                    <option value="TRANSPORT & FREIGHT CHARGES|996511|2500|Trip">Transport & Freight Charges (SAC 996511 - ₹2,500/Trip)</option>
+                    <option value="LORRY / TIPPER TRANSPORT CHARGES|996511|3500|Load">Lorry / Tipper Transport (SAC 996511 - ₹3,500/Load)</option>
+                    <option value="UNLOADING & LABOUR CHARGES|998599|800|Trip">Unloading & Labour Charges (SAC 998599 - ₹800/Trip)</option>
+                    <option value="CRANE & VEHICLE HIRE CHARGES|997311|4500|Shift">Crane / JCB Vehicle Hire (SAC 997311 - ₹4,500/Shift)</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            <!-- Items Container -->
+            <div id="itemsContainer" class="space-y-3">
+              <!-- Dynamically populated rows -->
+            </div>
+
+            <button type="button" id="btnAddItem" class="w-full py-2.5 border-2 border-dashed border-slate-300 hover:border-amber-500 hover:bg-amber-50/50 text-slate-600 hover:text-amber-700 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-plus"></i> Add Another Material / Service Row
+            </button>
+          </div>
+
+          <!-- Tax & Pricing Configuration -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-lg">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Tax Mode</label>
+              <select id="taxType" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+                <option value="intra" selected>CGST + SGST (Intra-State)</option>
+                <option value="inter">IGST (Inter-State)</option>
+                <option value="exempt">Nil / Exempted</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">GST Rate (%)</label>
+              <select id="gstRate" class="w-full px-3 py-1.5 text-sm border rounded focus:ring-2 focus:ring-amber-500">
+                <option value="5" selected>5% (2.5% SGST + 2.5% CGST - Sand / Quarry)</option>
+                <option value="12">12%</option>
+                <option value="18">18% (Transport & Services)</option>
+                <option value="28">28% (Cement)</option>
+                <option value="0">0%</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Round Off</label>
+              <div class="pt-2 flex items-center gap-2">
+                <input type="checkbox" id="autoRoundOff" checked class="w-4 h-4 text-amber-600 rounded">
+                <label for="autoRoundOff" class="text-xs text-slate-700 font-medium">Auto Round Off to ₹</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes / Terms -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Declaration / Terms</label>
+            <textarea id="declarationText" rows="2" class="w-full px-3 py-1.5 text-xs border rounded focus:ring-2 focus:ring-amber-500">We declare that this invoice shows the actual price of the goods/services described and that all particulars are true and correct.</textarea>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Invoice Live Preview (A4 Format Standard) -->
+    <div id="previewSection" class="hidden lg:block lg:col-span-6 xl:col-span-5 space-y-4">
+      
+      <!-- Preview Controls Card (Full A4 Standard) -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase text-slate-500 tracking-wider">Format:</span>
+          <span class="px-2.5 py-1 text-xs font-bold rounded bg-slate-900 text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-file-lines text-amber-400"></i> Standard A4
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">Scale:</span>
+          <button id="zoomOut" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-xs font-bold flex items-center justify-center">-</button>
+          <span id="zoomLevel" class="text-xs font-mono font-semibold">100%</span>
+          <button id="zoomIn" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-xs font-bold flex items-center justify-center">+</button>
+        </div>
+      </div>
+
+      <!-- Slip Wrapper / Scaler -->
+      <div class="overflow-x-auto pb-4 flex justify-center">
+        <div id="previewContainer" class="transition-transform origin-top w-full flex justify-center">
+          
+          <!-- RENDERED INVOICE (Guaranteed zero-offset table architecture in A4) -->
+          <div id="printableSlip" class="invoice-paper select-text">
+            
+            <!-- Invoice Header -->
+            <div class="text-center pb-2.5 border-b-2 border-slate-900">
+              <h2 id="slipSellerName" class="text-xl sm:text-2xl font-extrabold tracking-tight uppercase leading-snug text-slate-900">
+                NCR TRADERS
+              </h2>
+              <p id="slipSellerAddress" class="text-[11px] leading-tight text-slate-700 mt-0.5">
+                2/92-2, Kurangani, Thoothukudi, Tamil Nadu, 628623
+              </p>
+              
+              <!-- Phone and GSTIN centered -->
+              <div class="text-[11px] font-semibold mt-1 text-slate-800 flex flex-wrap justify-center items-center gap-x-4 gap-y-0.5">
+                <span>Phone : <span id="slipSellerPhone" class="font-bold font-mono">9489522652</span></span>
+                <span>GSTIN : <span id="slipSellerGstin" class="font-bold font-mono uppercase">33ENIPR3307E1Z6</span></span>
+              </div>
+              
+              <!-- Document Title -->
+              <div class="text-center text-[12.5px] font-bold mt-2 pt-1.5 border-t border-dashed border-slate-400">
+                <span id="slipDocTitle" class="underline uppercase tracking-wider text-slate-900">Tax Invoice</span>
+              </div>
+            </div>
+
+            <!-- Metadata Two-Column Grid via locked table -->
+            <div class="py-2 border-b-2 border-slate-900">
+              <table class="w-full border-collapse" style="table-layout: fixed;">
+                <tr>
+                  <!-- Left: Customer Details -->
+                  <td class="w-1/2 align-top pr-3 border-r border-dashed border-slate-300">
+                    <div class="text-[9.5px] font-extrabold uppercase text-slate-500 mb-1 tracking-wider">
+                      Customer / Bill To Details :
+                    </div>
+                    <table class="meta-table">
+                      <tr>
+                        <td class="lbl">Name</td>
+                        <td class="cln">:</td>
+                        <td class="val font-bold uppercase text-[11.5px]" id="slipBillTo">-</td>
+                      </tr>
+                      <tr id="slipBuyerPhoneRow" style="display: none;">
+                        <td class="lbl">Contact</td>
+                        <td class="cln">:</td>
+                        <td class="val font-mono font-semibold" id="slipBuyerPhone">-</td>
+                      </tr>
+                      <tr id="slipBuyerAddressRow" style="display: none;">
+                        <td class="lbl">Address</td>
+                        <td class="cln">:</td>
+                        <td class="val text-[10.5px] leading-snug" id="slipBuyerAddress">-</td>
+                      </tr>
+                      <tr id="slipBuyerGstinRow" style="display: none;">
+                        <td class="lbl">GSTIN</td>
+                        <td class="cln">:</td>
+                        <td class="val font-mono" id="slipBuyerGstin">-</td>
+                      </tr>
+                    </table>
+                  </td>
+
+                  <!-- Right: Bill & Transport Details -->
+                  <td class="w-1/2 align-top pl-3">
+                    <div class="text-[9.5px] font-extrabold uppercase text-slate-500 mb-1 tracking-wider">
+                      Bill & Transport Details :
+                    </div>
+                    <table class="meta-table">
+                      <tr>
+                        <td class="lbl">Bill No</td>
+                        <td class="cln">:</td>
+                        <td class="val font-mono font-bold text-[11.5px]" id="slipBillNo">261001</td>
+                      </tr>
+                      <tr>
+                        <td class="lbl">Bill Date</td>
+                        <td class="cln">:</td>
+                        <td class="val font-semibold" id="slipBillDate">31-10-2026 12:36:00</td>
+                      </tr>
+                      <tr>
+                        <td class="lbl">Bill Type</td>
+                        <td class="cln">:</td>
+                        <td class="val font-semibold" id="slipBillType">Cash</td>
+                      </tr>
+                      <tr>
+                        <td class="lbl">Vehicle No</td>
+                        <td class="cln">:</td>
+                        <td class="val font-mono font-bold uppercase" id="slipVehicleNumber">-</td>
+                      </tr>
+                      <tr>
+                        <td class="lbl">Delivery To</td>
+                        <td class="cln">:</td>
+                        <td class="val font-semibold uppercase" id="slipDeliveryTo">-</td>
+                      </tr>
+                      <tr>
+                        <td class="lbl">Driver Phone</td>
+                        <td class="cln">:</td>
+                        <td class="val font-mono" id="slipDriverPhone">-</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Items Table -->
+            <div class="pt-2 pb-1">
+              <table class="invoice-table text-[11px]">
+                <thead>
+                  <tr class="border-b-2 border-slate-900 font-bold bg-slate-50 text-slate-900">
+                    <th class="w-[6%] text-center py-1.5 px-1">#</th>
+                    <th class="w-[44%] text-left py-1.5 px-2">Description of Goods / Services</th>
+                    <th class="w-[14%] text-right py-1.5 px-2">Rate (₹)</th>
+                    <th class="w-[12%] text-right py-1.5 px-2">Qty</th>
+                    <th class="w-[8%] text-center py-1.5 px-1">Unit</th>
+                    <th class="w-[16%] text-right py-1.5 px-2">Total (₹)</th>
+                  </tr>
+                </thead>
+                <tbody id="slipItemsTableBody" class="divide-y divide-dotted divide-slate-300">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tax and Round Off Section -->
+            <div class="border-t-2 border-slate-900 pt-2 text-[11px] space-y-1">
+              <div class="flex justify-between items-center font-semibold">
+                <span>Subtotal (Taxable Value)</span>
+                <span id="slipSubtotalAmount" class="font-mono font-bold">0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-[10.5px]">
+                <span id="slipTaxBreakdown" class="text-slate-600">SGST / CGST</span>
+                <span id="slipTaxAmount" class="font-mono font-bold">0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-[10px] text-slate-600">
+                <span>Round off Adjustment</span>
+                <span id="slipRoundOff" class="font-mono">0.00</span>
+              </div>
+            </div>
+
+            <!-- Grand Total Bar -->
+            <div class="border-t-2 border-b-2 border-slate-900 my-2.5 py-2 flex justify-between items-baseline font-bold text-base sm:text-lg">
+              <span>Total Amount</span>
+              <span class="text-slate-950 font-extrabold">₹ <span id="slipGrandTotal" class="font-mono text-lg sm:text-xl">0.00</span></span>
+            </div>
+
+            <!-- Amount in words -->
+            <div class="text-[10.5px] pb-2 border-b border-slate-900">
+              <span class="text-slate-500 block text-[9px] uppercase font-bold">Amount Chargeable (in words) :</span>
+              <span id="slipAmountInWords" class="font-bold italic block capitalize text-slate-900 mt-0.5">-</span>
+            </div>
+
+            <!-- Declaration & Signature -->
+            <div class="pt-2 text-[9.5px] space-y-4">
+              <div class="leading-relaxed text-slate-600">
+                <p id="slipDeclaration">We declare that this invoice shows the actual price of the goods/services described and that all particulars are true and correct.</p>
+              </div>
+
+              <div class="flex justify-between items-end pt-6">
+                <div class="text-center">
+                  <div class="w-32 border-t border-dashed border-slate-400 mb-1"></div>
+                  <span class="text-[9px] text-slate-500 block">Customer's Signature</span>
+                </div>
+                <div class="text-right">
+                  <span class="block text-[9px] text-slate-600">Authorized Signatory</span>
+                  <span class="font-bold block mt-1 text-slate-950 text-[11.5px]">For <span id="slipSignatoryCompany">NCR TRADERS</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer note -->
+            <div class="mt-4 pt-2 border-t border-dashed border-slate-300 text-center text-[8.5px] text-slate-400 uppercase tracking-widest">
+              This is a computer generated invoice
+            </div>
+
+          </div>
+          <!-- END PRINTABLE SLIP -->
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Mobile Floating Action Bar for Quick Printing / Saving on Phones -->
+  <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2.5 flex items-center justify-between gap-3 shadow-lg z-30">
+    <button id="btnMobilePreviewToggle" class="flex-1 py-2 px-3 text-xs font-semibold bg-slate-800 text-white rounded-lg flex items-center justify-center gap-1.5">
+      <i class="fa-solid fa-eye"></i> View Slip
+    </button>
+    <button id="btnMobilePrint" class="flex-1 py-2 px-3 text-xs font-semibold bg-blue-600 text-white rounded-lg flex items-center justify-center gap-1.5">
+      <i class="fa-solid fa-print"></i> Print
+    </button>
+    <button id="btnMobilePDF" class="flex-1 py-2 px-3 text-xs font-bold bg-amber-500 text-slate-950 rounded-lg flex items-center justify-center gap-1.5">
+      <i class="fa-solid fa-file-pdf"></i> PDF
+    </button>
+  </div>
+
+  <!-- Dedicated Isolated Area strictly for Print (Populated dynamically when printing) -->
+  <div id="printIsolatedArea" style="display: none;"></div>
+
+  <!-- History Modal -->
+  <div id="historyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="px-4 sm:px-5 py-3 sm:py-4 bg-slate-900 text-white flex justify-between items-center">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-amber-400"></i> Past Generated Invoices
+        </h3>
+        <button id="btnCloseHistory" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+      </div>
+      <div class="p-3 sm:p-4 flex-1 overflow-y-auto">
+        <div id="historyList" class="space-y-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="px-4 sm:px-5 py-3 bg-slate-100 border-t border-slate-200 flex justify-between items-center">
+        <button id="btnClearHistory" class="text-xs text-red-600 hover:text-red-700 font-medium">Clear All History</button>
+        <button id="btnCloseHistory2" class="px-4 py-1.5 bg-slate-800 text-white rounded text-xs font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="pdfexport.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
